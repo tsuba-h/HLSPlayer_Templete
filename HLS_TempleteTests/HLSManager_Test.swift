@@ -10,7 +10,15 @@ import XCTest
 
 class HLSManager_Test: XCTestCase {
 
+    var readyToPlayExpextation: XCTestExpectation?
+    var totalTimeExpectation: XCTestExpectation?
+
     let hlsManager = HLSManager()
+
+
+    override func setUp() {
+        hlsManager.delegate = self
+    }
 
     override func setUpWithError() throws {
         // Put setup code here. This method is called before the invocation of each test method in the class.
@@ -23,10 +31,24 @@ class HLSManager_Test: XCTestCase {
     func testExample() throws {
         // This is an example of a functional test case.
         // Use XCTAssert and related functions to verify your tests produce the correct results.
-
-        let i = hlsManager.setupPlayer(url: "")
-        XCTe
     }
+
+
+    func testFailedSetupPlayer() throws {
+        let i = hlsManager.setupPlayer(url: "")
+        XCTAssertNil(i)
+    }
+
+    func testSuccessSetupPlayer() throws {
+        let o = hlsManager.setupPlayer(url: "http://devimages.apple.com/iphone/samples/bipbop/bipbopall.m3u8")
+        XCTAssertNotNil(o)
+
+        readyToPlayExpextation = expectation(description: "readyToPlay")
+        totalTimeExpectation = expectation(description: "totalTime")
+
+        wait(for: [readyToPlayExpextation!, totalTimeExpectation!], timeout: 5)
+    }
+
 
     func testPerformanceExample() throws {
         // This is an example of a performance test case.
@@ -35,4 +57,17 @@ class HLSManager_Test: XCTestCase {
         }
     }
 
+}
+
+extension HLSManager_Test: HLSManagerDelegate {
+    func readyToPlay() {
+        readyToPlayExpextation?.fulfill()
+    }
+
+    func totalTime(time: Float) {
+        totalTimeExpectation?.fulfill()
+    }
+
+    func updateTime(time: Float) {
+    }
 }
