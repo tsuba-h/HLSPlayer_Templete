@@ -1,1 +1,4 @@
-UserInterfaceState.xcuserstate
+.DS_Store
+*.swp // これも指定しておくと便利
+
+UserInterfaceState.xcuserstate // ここで指定
