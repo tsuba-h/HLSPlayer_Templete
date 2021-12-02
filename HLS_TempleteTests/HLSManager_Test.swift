@@ -49,6 +49,14 @@ class HLSManager_Test: XCTestCase {
         wait(for: [readyToPlayExpextation!, totalTimeExpectation!], timeout: 5)
     }
 
+    func testStringDuration() {
+        let s = Float(8600).toDurationString(timeDisplay: .hour)
+        XCTAssertEqual(s, "02:23:20")
+
+        let a = Float(135).toDurationString(timeDisplay: .minutes)
+        XCTAssertEqual(a, "02:15")
+    }
+
 
     func testPerformanceExample() throws {
         // This is an example of a performance test case.
