@@ -54,7 +54,7 @@ final class HLSManager {
             play()
         }
 
-        // playerの状態をKVOで監視
+        /// playerの状態をKVOで監視
         self.playerObservation = playerItem!.observe(\.status, options: [.new], changeHandler: {[weak self] (playerItem, value) in
             guard let self = self else {return}
             switch playerItem.status {
@@ -189,7 +189,12 @@ extension HLSManager {
 
 
     /// Control Centerでアイテムの情報表示
-    //現在再生中のアイテムをコントロールセンターに表示
+    /// 現在再生中のアイテムをControl Centerに表示
+    /*
+     MPNowPlayingInfoCenterの更新(MPNowPlayingInfoPropertyElapsedPlaybackTime(経過秒数))は頻繁にしない
+     そのため基本的にはバックグラウンド、通知センター・コントロールセンター表示になったタイミングで更新するのが良さそう
+     またControl Center内での再生・停止などでも更新する必要がある
+    */
     func updatePlaying(title: String) {
         guard let avPlayer = self.avPlayer else {return}
         // Define Now Playing Info
