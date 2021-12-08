@@ -78,4 +78,7 @@ extension HLSManager_Test: HLSManagerDelegate {
 
     func updateTime(time: Float) {
     }
+
+    func changePlaybackPosition(time: Float) {
+    }
 }

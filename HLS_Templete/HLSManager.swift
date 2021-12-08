@@ -17,6 +17,8 @@ protocol HLSManagerDelegate: AnyObject {
     func totalTime(time: Float)
     /// 現在時間更新
     func updateTime(time: Float)
+    /// Control Centerのシークバーを動かした時にアプリ内のスライダーの値を更新するためのもの
+    func changePlaybackPosition(time: Float)
 }
 
 
@@ -126,7 +128,6 @@ extension HLSManager {
             let nowTime = floor(Float(seconds))
 
             self.delegate?.updateTime(time: nowTime)
-            self.updateNowPlaying(time: nowTime)
         }
     }
 
@@ -182,37 +183,32 @@ extension HLSManager {
         if let evt = event as? MPChangePlaybackPositionCommandEvent {
             let time: Float  = floor(Float(evt.positionTime))
             timeJump(value: time)
+            delegate?.changePlaybackPosition(time: time)
         }
     }
 
 
-    /// Control Centerで現在の再生時間を表示
-    /// - Parameter time: 時間(シークバーを動かした時の値)
-    private func updateNowPlaying(time: Float) {
-        var nowPlayingInfo = [String : Any]()
-        nowPlayingInfo[MPNowPlayingInfoPropertyElapsedPlaybackTime] = time
-
-        if let duration = avPlayer?.currentItem?.duration {
-            nowPlayingInfo[MPMediaItemPropertyPlaybackDuration] = CMTimeGetSeconds(duration)
-        }
-
-        MPNowPlayingInfoCenter.default().nowPlayingInfo = nowPlayingInfo
-    }
-
-
+    /// Control Centerでアイテムの情報表示
     //現在再生中のアイテムをコントロールセンターに表示
-    func setupNowPlaying(title: String) {
+    func updatePlaying(title: String) {
+        guard let avPlayer = self.avPlayer else {return}
         // Define Now Playing Info
         var nowPlayingInfo = [String : Any]()
 
         nowPlayingInfo[MPMediaItemPropertyTitle] = title
 
-        //現在再生中のアイテムの経過時間（秒単位）。
-        nowPlayingInfo[MPNowPlayingInfoPropertyElapsedPlaybackTime] = avPlayer?.currentTime().seconds
-        //メディアアイテムの再生時間。
-        nowPlayingInfo[MPMediaItemPropertyPlaybackDuration] = avPlayer?.currentItem?.duration
-        //現在再生中のアイテムの再生速度。値は通常の再生速度を示します。1.0
-        nowPlayingInfo[MPNowPlayingInfoPropertyPlaybackRate] = avPlayer?.rate
+        switch avPlayer.timeControlStatus {
+        case .playing:
+            nowPlayingInfo[MPNowPlayingInfoPropertyPlaybackRate] = 1
+        case .paused:
+            nowPlayingInfo[MPNowPlayingInfoPropertyPlaybackRate] = 0
+        default: break
+        }
+
+        nowPlayingInfo[MPNowPlayingInfoPropertyElapsedPlaybackTime] = floor(CMTimeGetSeconds(avPlayer.currentTime()))
+        if let duration = avPlayer.currentItem?.duration {
+            nowPlayingInfo[MPMediaItemPropertyPlaybackDuration] = CMTimeGetSeconds(duration)
+        }
 
         // Set the metadata
         MPNowPlayingInfoCenter.default().nowPlayingInfo = nowPlayingInfo
