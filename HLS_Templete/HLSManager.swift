@@ -24,8 +24,6 @@ protocol HLSManagerDelegate: AnyObject {
 
 final class HLSManager {
 
-    static let shared = HLSManager()
-
     private var playerObservation: NSKeyValueObservation?
     private var playerItem: AVPlayerItem?
     private var avPlayerLayer: AVPlayerLayer?
@@ -99,6 +97,7 @@ final class HLSManager {
         avPlayer = nil
         avPlayerLayer = nil
         removePeriodicTimeObserver()
+        removePlayingInfo()
     }
 
     /// シークバーを動かした時の挙動
@@ -195,27 +194,36 @@ extension HLSManager {
      そのため基本的にはバックグラウンド、通知センター・コントロールセンター表示になったタイミングで更新するのが良さそう
      またControl Center内での再生・停止などでも更新する必要がある
     */
-    func updatePlaying(title: String) {
+    func updatePlayingInfo(title: String, liveMode: Bool = false) {
         guard let avPlayer = self.avPlayer else {return}
         // Define Now Playing Info
         var nowPlayingInfo = [String : Any]()
 
         nowPlayingInfo[MPMediaItemPropertyTitle] = title
 
-        switch avPlayer.timeControlStatus {
-        case .playing:
-            nowPlayingInfo[MPNowPlayingInfoPropertyPlaybackRate] = 1
-        case .paused:
-            nowPlayingInfo[MPNowPlayingInfoPropertyPlaybackRate] = 0
-        default: break
-        }
+        if liveMode {
+            switch avPlayer.timeControlStatus {
+            case .playing:
+                nowPlayingInfo[MPNowPlayingInfoPropertyPlaybackRate] = 1
+            case .paused:
+                nowPlayingInfo[MPNowPlayingInfoPropertyPlaybackRate] = 0
+            default: break
+            }
 
-        nowPlayingInfo[MPNowPlayingInfoPropertyElapsedPlaybackTime] = floor(CMTimeGetSeconds(avPlayer.currentTime()))
-        if let duration = avPlayer.currentItem?.duration {
-            nowPlayingInfo[MPMediaItemPropertyPlaybackDuration] = CMTimeGetSeconds(duration)
+            nowPlayingInfo[MPNowPlayingInfoPropertyElapsedPlaybackTime] = floor(CMTimeGetSeconds(avPlayer.currentTime()))
+            if let duration = avPlayer.currentItem?.duration {
+                nowPlayingInfo[MPMediaItemPropertyPlaybackDuration] = CMTimeGetSeconds(duration)
+            }
+        } else {
+            nowPlayingInfo[MPNowPlayingInfoPropertyIsLiveStream] = true
         }
 
         // Set the metadata
+        MPNowPlayingInfoCenter.default().nowPlayingInfo = nowPlayingInfo
+    }
+
+    private func removePlayingInfo() {
+        let nowPlayingInfo = [String: Any]()
         MPNowPlayingInfoCenter.default().nowPlayingInfo = nowPlayingInfo
     }
 }
