@@ -29,16 +29,37 @@ final class HLSManager {
     private var avPlayerLayer: AVPlayerLayer?
     private var timeObserverToken: Any?
 
-    @objc var avPlayer: AVPlayer?
+    private var playerTitle: String = ""
+    private var playerArtwork: MPMediaItemArtwork?
+
+
+    @objc private var avPlayer: AVPlayer?
 
     weak var delegate: HLSManagerDelegate?
 
 
+    init() {
+        setupNotification()
+    }
+
+
     /// avplayerのセット、状態監視とlayerを返す
     /// - Parameter url: url
+    /// - Parameter playerTitle: コントロールセンターで表示するためのタイトル名
+    /// - Parameter playerArtwork: コントロールセンターで表示するサムネ
+    /// - Parameter shouldAutoPlay: 読み込み後自動で再生するか
     /// - Returns: AVPlayerLayer
-    func setupPlayer(url: String, shouldAutoPlay: Bool = true) -> AVPlayerLayer? {
-        avPlayer = AVPlayer()
+    func setupPlayer(url: String, playerTitle: String = "", playerArtwork: UIImage? = nil ,shouldAutoPlay: Bool = true) -> AVPlayerLayer? {
+
+        self.avPlayer = AVPlayer()
+        self.playerTitle = playerTitle
+
+        if let artworkImage = playerArtwork {
+            let artWorkImage = MPMediaItemArtwork.init(boundsSize: artworkImage.size) { _ in
+                return artworkImage
+            }
+            self.playerArtwork = artWorkImage
+        }
 
         guard let url = URL(string: url),
               let avPlayer = self.avPlayer else {return nil}
@@ -83,12 +104,14 @@ final class HLSManager {
     /// 再生
     func play() {
         avPlayer?.play()
+        updatePlayingInfo()
     }
 
 
     /// 一時停止
     func pause() {
         avPlayer?.pause()
+        updatePlayingInfo()
     }
 
     /// 再生終了
@@ -102,6 +125,7 @@ final class HLSManager {
 
     /// シークバーを動かした時の挙動
     /// - Parameter value: 時間(シークバーを動かした時の値)
+    /// - Parameter shouldAutoPlay: 時間を動かした後自動で再生 するか
     func timeJump(value: Float, shouldAutoPlay: Bool = true) {
         let time = CMTime(value: Int64(value), timescale: 1)
         avPlayer?.seek(to: time, toleranceBefore: CMTime.zero, toleranceAfter: CMTime.zero)
@@ -141,13 +165,28 @@ extension HLSManager {
 }
 
 extension HLSManager {
-    /// フォアグラウンドになった時
-    func enterForeground() {
-        avPlayerLayer?.player = avPlayer
+
+    private func setupNotification() {
+        NotificationCenter.default.addObserver(self, selector: #selector(willEnterForeground), name: UIApplication.willEnterForegroundNotification, object: nil)
+        NotificationCenter.default.addObserver(self, selector: #selector(didEnterBackground), name: UIApplication.didEnterBackgroundNotification, object: nil)
+        NotificationCenter.default.addObserver(self, selector: #selector(willResignActive), name: UIApplication.willResignActiveNotification, object: nil)
     }
+
+    /// フォアグラウンドになった時
+    @objc func willEnterForeground() {
+        avPlayerLayer?.player = avPlayer
+        updatePlayingInfo()
+    }
+
     /// バックグラウンドになった時
-    func enterBackground() {
+    @objc func didEnterBackground() {
         avPlayerLayer?.player = nil
+        updatePlayingInfo()
+    }
+
+    /// 通知センター・コントロールセンター表示時
+    @objc func willResignActive() {
+        updatePlayingInfo()
     }
 }
 
@@ -194,12 +233,13 @@ extension HLSManager {
      そのため基本的にはバックグラウンド、通知センター・コントロールセンター表示になったタイミングで更新するのが良さそう
      またControl Center内での再生・停止などでも更新する必要がある
     */
-    func updatePlayingInfo(title: String, liveMode: Bool = false) {
+    func updatePlayingInfo(liveMode: Bool = false) {
         guard let avPlayer = self.avPlayer else {return}
         // Define Now Playing Info
         var nowPlayingInfo = [String : Any]()
 
-        nowPlayingInfo[MPMediaItemPropertyTitle] = title
+        nowPlayingInfo[MPMediaItemPropertyTitle] = playerTitle
+        nowPlayingInfo[MPMediaItemPropertyArtwork] = playerArtwork
 
         if liveMode {
             switch avPlayer.timeControlStatus {
